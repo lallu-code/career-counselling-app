@@ -1,0 +1,143 @@
+import streamlit as st
+import json
+import os
+
+# File paths
+CAREERS_FILE = "careers.json"
+USERS_FILE = "users.json"
+
+# --- Utility functions ---
+
+# Load user data
+def load_users():
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "r") as file:
+            return json.load(file)
+    else:
+        return {}
+
+# Save user data
+def save_users(users):
+    with open(USERS_FILE, "w") as file:
+        json.dump(users, file, indent=4)
+
+# Load career data
+def load_careers():
+    if os.path.exists(CAREERS_FILE):
+        with open(CAREERS_FILE, "r") as file:
+            return json.load(file)
+    else:
+        return {}
+
+# Save career data
+def save_careers(data):
+    with open(CAREERS_FILE, "w") as file:
+        json.dump(data, file, indent=4)
+
+# --- Career App Features ---
+
+def view_all_careers(data):
+    st.subheader("Available Careers")
+    for career in data:
+        st.write(f"- {career}")
+
+def view_career_details(data):
+    st.subheader("Career Details")
+    career_list = list(data.keys())
+    if career_list:
+        selected = st.selectbox("Select a career", career_list)
+        details = data[selected]
+        st.markdown(f"**Description:** {details['description']}")
+        st.markdown(f"**Salary:** {details['salary']}")
+        st.markdown(f"**Opportunities:** {', '.join(details['opportunities'])}")
+        st.markdown(f"**Future Prospects:** {details['future_prospects']}")
+        st.markdown(f"**Top Universities:** {', '.join(details['universities'])}")
+    else:
+        st.warning("No careers found. Please add some.")
+
+def add_career(data):
+    st.subheader("Add a New Career")
+    name = st.text_input("Career Name")
+    description = st.text_area("Description")
+    salary = st.text_input("Salary Range")
+    opportunities = st.text_input("Opportunities (comma-separated)")
+    future_prospects = st.text_area("Future Prospects")
+    universities = st.text_input("Top Universities (comma-separated)")
+
+    if st.button("Add Career"):
+        if name in data:
+            st.error("Career already exists.")
+        elif name and description and salary and opportunities and future_prospects and universities:
+            data[name] = {
+                "description": description,
+                "salary": salary,
+                "opportunities": [op.strip() for op in opportunities.split(",")],
+                "future_prospects": future_prospects,
+                "universities": [uni.strip() for uni in universities.split(",")]
+            }
+            save_careers(data)
+            st.success(f"{name} added successfully!")
+        else:
+            st.error("Please fill in all fields.")
+
+# --- Authentication ---
+
+def register():
+    st.subheader("Register")
+    new_user = st.text_input("New Username")
+    new_pass = st.text_input("New Password", type="password")
+    if st.button("Create Account"):
+        users = load_users()
+        if new_user in users:
+            st.error("Username already exists.")
+        else:
+            users[new_user] = new_pass
+            save_users(users)
+            st.success("Account created successfully! You can now log in.")
+
+def login():
+    st.subheader("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        users = load_users()
+        if username in users and users[username] == password:
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.success(f"Welcome, {username}!")
+        else:
+            st.error("Invalid credentials.")
+
+# --- Main App ---
+
+def main():
+    st.title("🎓 Career Counselling App")
+
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    if not st.session_state.logged_in:
+        menu = ["Login", "Register"]
+        choice = st.sidebar.selectbox("Menu", menu)
+        if choice == "Login":
+            login()
+        elif choice == "Register":
+            register()
+    else:
+        menu = ["Home", "View Career Details", "Add a Career", "Logout"]
+        choice = st.sidebar.selectbox("Menu", menu)
+        careers = load_careers()
+
+        if choice == "Home":
+            view_all_careers(careers)
+        elif choice == "View Career Details":
+            view_career_details(careers)
+        elif choice == "Add a Career":
+            add_career(careers)
+        elif choice == "Logout":
+            st.session_state.logged_in = False
+            st.session_state.username = ""
+            st.experimental_rerun()
+
+if __name__ == "__main__":
+    main()
